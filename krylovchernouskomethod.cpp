@@ -7,21 +7,38 @@ KrylovChernouskoMethod::KrylovChernouskoMethod()
 {
 }
 
+void KrylovChernouskoMethod::ClearControlFunctionsValues()
+{
+    auto firstValues = &calculateValues[0];
+    firstValues->x1 = initConditions.x1Start;
+    firstValues->x2 = initConditions.x2Start;
+
+    for(int i = 1; i < initConditions.stepsCount; ++i)
+    {
+        auto value = &calculateValues[i];
+        value->x1 = 0;
+        value->x2 = 0;
+    }
+}
+
 void KrylovChernouskoMethod::SetInitConditions(InitConditions initConditions)
 {
     this->initConditions = initConditions;
-    iterationsCount = 0;
-    auto n = initConditions.stepsCount;
-    dt = (initConditions.tMax - initConditions.tMin) / n;
-    calculateValues.clear();
-    calculateValues.resize(n);
-    auto initValues = &calculateValues[0];
-    initValues->x1 = initConditions.x1Start;
-    initValues->x2 = initConditions.x2Start;
-    initValues->t = 0;
+    dt = (initConditions.tMax - initConditions.tMin) / initConditions.stepsCount;
+    calculateValues.resize(initConditions.stepsCount);
+    calculateValues[0].t = 0;
+    auto firstValues = &calculateValues[0];
+    firstValues->x1 = initConditions.x1Start;
+    firstValues->x2 = initConditions.x2Start;
 
-    for(int i = 0; i < n; ++i)
-        calculateValues[i].u = initConditions.startControl;
+    for(int i = 0; i < initConditions.stepsCount; ++i)
+    {
+        auto value = &calculateValues[i];
+        value->u = initConditions.startControl;
+        value->t = i * dt;
+    }
+
+    iterationsCount = 0;
 }
 
 float KrylovChernouskoMethod::Clamp(float min, float max, float value)
@@ -35,13 +52,61 @@ float KrylovChernouskoMethod::Clamp(float min, float max, float value)
     return value;
 }
 
-float KrylovChernouskoMethod::CalcFunctional()
+float KrylovChernouskoMethod::CalcQualityCriteriaForCurrentControl()
 {
-    auto firstValues = &calculateValues.first();
+    for(int i = 1, total = initConditions.stepsCount; i < total; ++i)
+    {
+        auto prev = &calculateValues[i-1];
+        auto cur = &calculateValues[i];
+        cur->x1 = prev->x1 + prev->x2 * dt;
+        cur->x2 = prev->x2 + prev->u * dt;
+    }
+
+    float Integral = 0;
+
+    for(int i=0; i<initConditions.stepsCount; i++)
+    {
+        auto value = &calculateValues[i];
+        Integral += (value->u * value->u) / (initConditions.k * initConditions.k) * dt;
+    }
+
+    float endConditions = CalculateEndConditions();
+    return endConditions * 0.5 + Integral * 0.5;
+}
+
+
+
+float KrylovChernouskoMethod::CalcQualityCriteriaForOptimalControl()
+{
+    for(int i = 1, total = initConditions.stepsCount; i < total; ++i)
+    {
+        auto prev = &calculateValues[i-1];
+        auto cur = &calculateValues[i];
+        cur->x1 = prev->x1 + prev->x2 * dt;
+        cur->x2 = prev->x2 + prev->uOptimal * dt;
+    }
+
+    float Integral = 0;
+
+    for(int i=0; i<initConditions.stepsCount; i++)
+    {
+        auto value = &calculateValues[i];
+        Integral += (value->uOptimal * value->uOptimal) / (initConditions.k * initConditions.k) * dt;
+    }
+
+    float endConditions = CalculateEndConditions();
+    return endConditions * 0.5 + Integral * 0.5;
+}
+
+float KrylovChernouskoMethod::CalculateEndConditions()
+{
     auto lastValues = &calculateValues.last();
-    float Functional = (lastValues->x1 - initConditions.x1End) * (lastValues->x1 - initConditions.x1End) +
-                       (lastValues->x2 - initConditions.x2End) * (lastValues->x2 - initConditions.x2End);
-    return Functional;
+    float endConditions =
+        initConditions.Ro1 * (lastValues->x1 - initConditions.x1End) *
+        (lastValues->x1 - initConditions.x1End) +
+        initConditions.Ro2 * (lastValues->x2 - initConditions.x2End) *
+        (lastValues->x2 - initConditions.x2End);
+    return endConditions;
 }
 
 bool KrylovChernouskoMethod::RunIteration()
@@ -51,57 +116,32 @@ bool KrylovChernouskoMethod::RunIteration()
     if(iterationsCount == 0)
     {
         Iteration();
-        float Functional = CalcFunctional();
-        float result = 0;
-
-        for(int i=0; i<initConditions.stepsCount; i++)
-        {
-            auto value = &calculateValues[i];
-            result += value->u*value->uOptimal*dt;
-        }
-
-        Functional = Functional * 0.5 + result * 0.5;
-        functionalValues.append(Functional);
         result = true;
     }
     else
     {
         result = OptimalControlSearch();
         Iteration();
-        float Functional = CalcFunctional();
-        float result = 0;
-
-        for(int i=0; i<initConditions.stepsCount; i++)
-        {
-            auto value = &calculateValues[i];
-            result += value->u*value->uOptimal*dt;
-        }
-
-        Functional = Functional * 0.5 + result * 0.5;
-        functionalValues.append(Functional);
     }
 
     iterationsCount++;
     return result;
 }
 
+int KrylovChernouskoMethod::GetPassedIterationsCount()
+{
+    return iterationsCount;
+}
+
 void KrylovChernouskoMethod::Iteration()
 {
-    for(int i = 1, total = initConditions.stepsCount; i < total; ++i)
-    {
-        auto prev = &calculateValues[i-1];
-        auto cur = &calculateValues[i];
-        cur->x1 = prev->x1 + prev->x2 * dt;
-        cur->x2 = prev->x2 + prev->u * dt;
-        cur->t = prev->t+ dt;
-    }
-
-    auto firstValues = &calculateValues.first();
+    float criteria = CalcQualityCriteriaForCurrentControl();
+    qualityCriteriaValues.append(criteria);
     auto lastValues = &calculateValues.last();
-    lastValues->p1 = lastValues->x1 - initConditions.x1End;
-    lastValues->p2 = lastValues->x2 - initConditions.x2End;
+    lastValues->p1 = (lastValues->x1 - initConditions.x1End) * initConditions.Ro1;
+    lastValues->p2 = (lastValues->x2 - initConditions.x2End) * initConditions.Ro2;
     lastValues->H = lastValues->p1 * lastValues->x2 + lastValues->p2 * lastValues->u;
-    lastValues->uCorr = lastValues->p2 > 0 ? initConditions.minControl : initConditions.maxControl;
+    lastValues->uCorr = CalculateControlValue(-lastValues->p2);
 
     for(int i = initConditions.stepsCount-2; i >= 0; --i)
     {
@@ -110,15 +150,21 @@ void KrylovChernouskoMethod::Iteration()
         cur->p1 = prev->p1;
         cur->p2 = prev->p2 - prev->p1 * dt;
         cur->H = cur->p1 * cur->x2 + cur->p2 * cur->u;
-        cur->uCorr = lastValues->p2 > 0 ? initConditions.minControl : initConditions.maxControl;
+        cur->uCorr = CalculateControlValue(-cur->p2);
     }
+}
+
+float KrylovChernouskoMethod::CalculateControlValue(float p2)
+{
+    auto value = Clamp(initConditions.minControl, initConditions.maxControl, p2);
+    return value * (initConditions.k * initConditions.k);
 }
 
 bool KrylovChernouskoMethod::OptimalControlSearch()
 {
     int sIter = 0;
-    float prevFunctional = functionalValues.last();
-    float Functional;
+    float prevCriteria = qualityCriteriaValues.last();
+    float currentCriteria;
 
     do
     {
@@ -128,27 +174,9 @@ bool KrylovChernouskoMethod::OptimalControlSearch()
             value->uOptimal = value->u + genS(sIter) * (value->uCorr - value->u);
         }
 
-        for(int i = 1, total = initConditions.stepsCount; i < total; ++i)
-        {
-            auto prev = &calculateValues[i-1];
-            auto cur = &calculateValues[i];
-            cur->x1 = prev->x1 + prev->x2 * dt;
-            cur->x2 = prev->x2 + prev->uOptimal * dt;
-            cur->t = prev->t + dt;
-        }
+        currentCriteria = CalcQualityCriteriaForOptimalControl();
 
-        Functional = CalcFunctional();
-        float result = 0;
-
-        for(int i=0; i<initConditions.stepsCount; i++)
-        {
-            auto value = &calculateValues[i];
-            result += value->uOptimal*value->uOptimal*dt;
-        }
-
-        Functional = Functional * 0.5 + result * 0.5;
-
-        if(fabs(prevFunctional - Functional) < EPSILON)
+        if(fabs(prevCriteria - currentCriteria ) < EPSILON)
         {
             QMessageBox::warning(NULL, "Внимание!", QString("Дальнейшая отимизация невозможна: "
                                  "изменение функционала при итерациях "
@@ -165,23 +193,15 @@ bool KrylovChernouskoMethod::OptimalControlSearch()
 
         sIter++;
     }
-    while(prevFunctional < Functional);
+    while(prevCriteria < currentCriteria );
 
     for(int i = 0; i < initConditions.stepsCount; ++i)
     {
         auto value = &calculateValues[i];
-        value->x1 = 0;
-        value->x2 = 0;
-        value->p1 = 0;
-        value->p2 = 0;
         value->u = value->uOptimal;
     }
 
-    auto initValues = &calculateValues[0];
-    initValues->x1 = initConditions.x1Start;
-    initValues->x2 = initConditions.x2Start;
-    initValues->t = 0;
-    //    functionalValues.append(Functional);
+    //ClearControlFunctionsValues();
     return true;
 }
 
@@ -202,7 +222,7 @@ QVector<KrylovChernouskoMethod::CalculateValues> KrylovChernouskoMethod::GetCalc
 
 QList<float> KrylovChernouskoMethod::GetFunctionalValues()
 {
-    return functionalValues;
+    return qualityCriteriaValues;
 }
 
 

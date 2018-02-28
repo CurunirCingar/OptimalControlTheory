@@ -22,6 +22,9 @@ public:
         float minControl;
         float maxControl;
         float startControl;
+        float Ro1;
+        float Ro2;
+        float k;
     };
 
     struct CalculateValues
@@ -40,6 +43,7 @@ public:
 
     void SetInitConditions(InitConditions initConditions);
     bool RunIteration();
+    int GetPassedIterationsCount();
 
     QVector<CalculateValues> GetCalculateValues();
     QList<float> GetFunctionalValues();
@@ -49,9 +53,9 @@ private:
     QVector<CalculateValues> calculateValues;
     float dt;
     int iterationsCount;
-    QList<float> functionalValues;
+    QList<float> qualityCriteriaValues;
     const float EPSILON = 0.00001;
-    const int optimalSearchIterationsLimit = 10000;
+    const int optimalSearchIterationsLimit = 100;
 
 
     float Clamp(float min, float max, float value);
@@ -62,7 +66,12 @@ private:
     void Iteration();
     bool OptimalControlSearch();
     float genS(int i);
-    float CalcFunctional();
+
+    void ClearControlFunctionsValues();
+    float CalcQualityCriteriaForCurrentControl();
+    float CalcQualityCriteriaForOptimalControl();
+    float CalculateControlValue(float p2);
+    float CalculateEndConditions();
 };
 
 #endif // KRYLOVCHERNOUSKOMETHOD_H

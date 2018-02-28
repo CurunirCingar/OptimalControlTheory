@@ -16,10 +16,12 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    AddSeries(chart_x1_x2, "X2(X1)", Qt::red);
-    AddSeries(chart_t_x1, "X1(t)", Qt::green);
-    AddSeries(chart_t_x2, "X2(t)", Qt::blue);
-    AddSeries(chart_t_u, "U(t)", Qt::cyan);
+    chart.setTheme(QChart::ChartThemeHighContrast);
+    chart.setAnimationOptions(QChart::SeriesAnimations);
+    SetupSeries(chart_x1_x2, "X2(X1)", Qt::red);
+    SetupSeries(chart_t_x1, "X1(t)", Qt::green);
+    SetupSeries(chart_t_x2, "X2(t)", Qt::blue);
+    SetupSeries(chart_t_u, "U(t)", Qt::cyan);
     SetActiveSeries(ChartTypes::X1_X2);
     ui->chart->setChart(&chart);
     ui->chart->setRenderHint(QPainter::Antialiasing);
@@ -30,7 +32,7 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-void MainWindow::AddSeries(QLineSeries &series, QString name, Qt::GlobalColor color)
+void MainWindow::SetupSeries(QLineSeries &series, QString name, Qt::GlobalColor color)
 {
     series.setName(name);
     series.setColor(QColor(color));
@@ -39,12 +41,21 @@ void MainWindow::AddSeries(QLineSeries &series, QString name, Qt::GlobalColor co
 void MainWindow::on_buttonCalculate_clicked()
 {
     if(!calc.RunIteration())
+    {
         autoCalculateTimer.stop();
-
-    currentSeries->clear();
-    ShowSeriesOnChart(currentSeries);
-    auto functional = calc.GetFunctionalValues().last();
-    ui->spinFunctional->setValue(functional);
+        ui->buttonCalculate->setEnabled(false);
+        ui->buttonCalculateAll->setEnabled(false);
+    }
+    else
+    {
+        ui->spinIterations->setValue(calc.GetPassedIterationsCount());
+        currentSeries->clear();
+        ShowSeriesOnChart(currentSeries);
+        auto functional = calc.GetFunctionalValues().last();
+        ui->spinFunctional->setValue(functional);
+        ui->buttonCalculate->setEnabled(true);
+        ui->buttonCalculateAll->setEnabled(true);
+    }
 }
 
 QLineSeries* MainWindow::GetLineSeriesForType(ChartTypes type)
@@ -105,8 +116,12 @@ void MainWindow::ShowSeriesOnChart(QLineSeries *series)
         yAxisConstr.second += 0.5;
     }
 
-    chart.axisX()->setRange(xAxisConstr.first, xAxisConstr.second);
-    chart.axisY()->setRange(yAxisConstr.first, yAxisConstr.second);
+    auto maxXValue = fabsf(xAxisConstr.first) > fabsf(xAxisConstr.second) ? xAxisConstr.first : xAxisConstr.second;
+    chart.axisX()->setRange(-maxXValue, maxXValue);
+    auto maxYValue = fabsf(yAxisConstr.first) > fabsf(yAxisConstr.second) ? yAxisConstr.first : yAxisConstr.second;
+    chart.axisY()->setRange(-maxYValue, maxYValue);
+    //    chart.axisX()->setRange(xAxisConstr.first, xAxisConstr.second);
+    //    chart.axisY()->setRange(yAxisConstr.first, yAxisConstr.second);
 }
 
 QPointF MainWindow::GetValuesForChart(KrylovChernouskoMethod::CalculateValues value, ChartTypes type)
@@ -148,11 +163,11 @@ void MainWindow::on_buttonStartCalculation_clicked()
     cond.x1End = ui->spinEndX1->value();
     cond.x2End = ui->spinEndX2->value();
     cond.startControl = ui->spinStartControl->value();
+    cond.Ro1 = ui->spinRo1->value();
+    cond.Ro2 = ui->spinRo2->value();
+    cond.k = ui->spinK->value();
     calc.SetInitConditions(cond);
-    calc.RunIteration();
-    ShowSeriesOnChart(currentSeries);
-    auto functional = calc.GetFunctionalValues().last();
-    ui->spinFunctional->setValue(functional);
+    on_buttonCalculate_clicked();
 }
 
 void MainWindow::on_buttonCalculateAll_clicked()

@@ -59,7 +59,7 @@ private:
 
     void UpdateChartConstraints(QPair<float, float> &constr, float value);
     QPointF GetValuesForChart(KrylovChernouskoMethod::CalculateValues value, ChartTypes type);
-    void AddSeries(QLineSeries &series, QString name, Qt::GlobalColor color);
+    void SetupSeries(QLineSeries &series, QString name, Qt::GlobalColor color);
     void SetActiveSeries(ChartTypes type);
     QLineSeries *GetLineSeriesForType(ChartTypes type);
 };
