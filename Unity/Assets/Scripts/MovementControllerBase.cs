@@ -14,6 +14,30 @@ public class MovementControllerBase : MonoBehaviour
     public float ReachDistance;
     public Action OnTargetReached;
 
+    public enum PlaneRestrictionType
+    {
+        None,
+        X_Y,
+        X_Z,
+        Y_Z,
+    }
+    public Action<PlaneRestrictionType> OnPlaneRestrictionUpdate;
+    private PlaneRestrictionType restrictPlane;
+    public PlaneRestrictionType RestrictPlane
+    {
+        get { return restrictPlane; }
+        set
+        {
+            if (value == restrictPlane)
+                return;
+            restrictPlane = value;
+            if (OnPlaneRestrictionUpdate != null)
+                OnPlaneRestrictionUpdate(restrictPlane);
+            model.Mu = Vector3.zero;
+            model.Ru = Vector3.zero;
+        }
+    }
+
     void Awake()
     {
         model = GetComponent<MovementModel>();

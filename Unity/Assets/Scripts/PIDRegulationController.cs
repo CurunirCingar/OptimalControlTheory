@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 [RequireComponent(typeof(MovementModel))]
-public class PIDRegulation : MovementControllerBase
+public class PIDRegulationController : MovementControllerBase
 {
     public float P;
     public float I;
@@ -48,28 +48,34 @@ public class PIDRegulation : MovementControllerBase
         base.OnAwake();
         
         valuesRegulator.Add(new PIDValueRegulator(
-            () => { return rotError.x; },
+            () => { return RestrictPlane == PlaneRestrictionType.Y_Z ||
+                RestrictPlane == PlaneRestrictionType.None ? rotError.x : 0; },
             (float val) => { model.MuX = val; })
         );
         valuesRegulator.Add(new PIDValueRegulator(
-            () => { return rotError.y; },
+            () => { return RestrictPlane == PlaneRestrictionType.X_Z ||
+                RestrictPlane == PlaneRestrictionType.None ? rotError.y : 0; },
             (float val) => { model.MuY = val; })
         );
         valuesRegulator.Add(new PIDValueRegulator(
-            () => { return rotError.z; },
+            () => { return RestrictPlane == PlaneRestrictionType.X_Y ||
+                RestrictPlane == PlaneRestrictionType.None ? rotError.z : 0; },
             (float val) => { model.MuZ = val; })
         );
 
         valuesRegulator.Add(new PIDValueRegulator(
-            () => { return posError.x; },
+            () => { return RestrictPlane != PlaneRestrictionType.Y_Z ||
+                RestrictPlane == PlaneRestrictionType.None ? posError.x : 0; },
             (float val) => { model.RuX = val; })
         );
         valuesRegulator.Add(new PIDValueRegulator(
-            () => { return posError.y; },
+            () => { return RestrictPlane != PlaneRestrictionType.X_Z ||
+                RestrictPlane == PlaneRestrictionType.None ? posError.y : 0; },
             (float val) => { model.RuY = val; })
         );
         valuesRegulator.Add(new PIDValueRegulator(
-            () => { return posError.z; },
+            () => { return RestrictPlane != PlaneRestrictionType.X_Y ||
+                RestrictPlane == PlaneRestrictionType.None ? posError.z : 0; },
             (float val) => { model.RuZ = val; })
         );
     }
@@ -86,10 +92,8 @@ public class PIDRegulation : MovementControllerBase
         rotError.x = NormalizeValue(rotError.x);
         rotError.y = NormalizeValue(rotError.y);
         rotError.z = NormalizeValue(rotError.z);
-        Debug.Log(rotError);
         foreach (var reg in valuesRegulator)
             reg.UpdateRegulation();
-
     }
 
     float NormalizeValue(float value)
