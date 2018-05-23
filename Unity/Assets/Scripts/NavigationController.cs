@@ -11,7 +11,7 @@ public class NavigationController : MonoBehaviour {
 
     [Range(1f, 1000f)]
     public int GeneratedPointsCount = 15;
-    public float PointsGenerationCubeSide = 100f;
+    public float PointsGenerationCubeSide = 1f;
     public bool GeneratePathPoints = false;
     private bool isPointsGenerated;
 
@@ -110,7 +110,7 @@ public class NavigationController : MonoBehaviour {
 
     private void UpdatePlaneRestriction(MovementControllerBase.PlaneRestrictionType type)
     {
-        float distance = 35f;
+        float distance = 40f;
         switch (type)
         {
             case MovementControllerBase.PlaneRestrictionType.None:

@@ -4,4 +4,7 @@
 EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
-  m_Scenes: []
+  m_Scenes:
+  - enabled: 1
+    path: Assets/Textures&Materials/Main.unity
+    guid: 1938bf81a0f2b224c938e2be8a4ddf7d

@@ -285,6 +285,8 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Assets\GpuGraph\Scripts\GraphManager.cs" />
+    <Compile Include="Assets\GpuGraph\Scripts\Test\GpuGraphTest.cs" />
     <Compile Include="Assets\Scripts\Euler.cs" />
     <Compile Include="Assets\Scripts\GUIManager.cs" />
     <Compile Include="Assets\Scripts\MoveForward.cs" />
@@ -292,6 +294,12 @@
     <Compile Include="Assets\Scripts\MovementModel.cs" />
     <Compile Include="Assets\Scripts\NavigationController.cs" />
     <Compile Include="Assets\Scripts\PIDRegulationController.cs" />
+    <Compile Include="Assets\SimplestPlot\Example.cs" />
+    <Compile Include="Assets\SimplestPlot\SimplestPlot.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Assets\GpuGraph\ReadMe.txt" />
+    <None Include="Assets\GpuGraph\Shaders\GPUGraph.shader" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="GenerateTargetFrameworkMonikerAttribute" />

@@ -40,4 +40,8 @@ CMakeLists.txt.user*
 *.meta
 *.sln
 *.csproj
-
+*.bin
+*.log
+*/Library
+*/Temp
+*/.vs

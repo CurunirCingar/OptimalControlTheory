@@ -29,12 +29,13 @@ public class GUIManager : MonoBehaviour
     public Text[] ErrorLabels;
     public bool updateValues = true;
 
+    float timeSinceUpdate;
+
     private void Start()
     {
         if (model == null)
             return;
         controller = model.GetComponent<PIDRegulationController>();
-        model.OnMovementUpdate += UpdateGUI;
         AbsMLimit.text = model.MuLimits.x.ToString();
         AbsMLimit.onValueChanged.AddListener(delegate (string str)
         {
@@ -92,7 +93,7 @@ public class GUIManager : MonoBehaviour
         });
     }
 
-    private void UpdateGUI()
+    private void Update()
     {
         ControlLabels[0].text = model.MuX.ToString();
         ControlLabels[1].text = model.MuY.ToString();
@@ -107,5 +108,43 @@ public class GUIManager : MonoBehaviour
         ErrorLabels[3].text = controller.rotError.x.ToString();
         ErrorLabels[4].text = controller.rotError.y.ToString();
         ErrorLabels[5].text = controller.rotError.z.ToString();
+
+        //GraphManager.Graph.Update();
+        //timeSinceUpdate += Time.deltaTime;
+        //if (timeSinceUpdate > 0.3f)
+        //{
+        //    UpdatePlot();
+        //    timeSinceUpdate = 0f;
+        //}
+    }
+
+    private void UpdatePlot()
+    {
+        float w = Screen.width;
+        float h = Screen.height;
+
+        Rect posErrorRect = new Rect(0f, h * 0.5f, w * 0.5f, h * 0.5f);
+        PlotValue("posError", model.Mu, posErrorRect);
+        Rect rotErrorRect = new Rect(w * 0.5f, h * 0.5f, w * 0.5f, h * 0.5f);
+        PlotValue("rotError", model.Ru, rotErrorRect);
+    }
+
+    void PlotValue(string spaceName, Vector3 value, Rect GraphRect)
+    {
+        float x = GraphRect.x;
+        float w = GraphRect.width / 3f;
+        GraphRect.width = w;
+        PlotValue(spaceName + ".x", value.x, Color.red, GraphRect);
+        GraphRect.x += w;
+        PlotValue(spaceName + ".y", value.y, Color.green, GraphRect);
+        GraphRect.x += w;
+        PlotValue(spaceName + ".z", value.z, Color.blue, GraphRect);
+    }
+
+    void PlotValue(string spaceName, float value, Color clr, Rect GraphRect)
+    {
+        if (GraphManager.Graph == null)
+            return;
+        GraphManager.Graph.Plot(spaceName, value, clr, GraphRect);
     }
 }
